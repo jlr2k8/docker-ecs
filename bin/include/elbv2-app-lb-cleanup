@@ -1,0 +1,81 @@
+#!/bin/bash
+
+. "${BASH_SOURCE%/*}"/bootstrap.sh
+
+ELBV2_TARGET_GROUP_NAME="${1}"
+
+function delete_elbv2_path_rule {
+    echo
+    echo "Attempting to cleanup app LB path rules..."
+    echo
+
+    local ELBV2_TARGET_GROUP_NAME="${1}"
+
+    if [ -z "${ELBV2_HTTP_LISTENER_ARN}" ]; then
+        echo
+        echo "No listener ARN specified!"
+        echo
+
+        return 1
+    fi
+
+    if [ -z "${ELBV2_TARGET_GROUP_NAME}" ]; then
+        echo
+        echo "No target group name specified!"
+        echo
+
+        return 1
+    fi
+
+    # Find any rule that is part of the target group/load balancer
+    RULE_ARN=$(aws elbv2 describe-rules \
+        --profile "${ECS_CRED_PROFILE}" \
+        --region "${AWS_REGION}" \
+        --listener-arn "${ELBV2_HTTP_LISTENER_ARN}" | grep "${ELBV2_TARGET_GROUP_NAME}" -B 4 | head -1 | awk '{ print $2 }' | tr -d ',"')
+
+    COUNT_RULE_ARN=$(aws elbv2 describe-rules \
+        --profile "${ECS_CRED_PROFILE}" \
+        --region "${AWS_REGION}" \
+        --listener-arn "${ELBV2_HTTP_LISTENER_ARN}" | grep "${ELBV2_TARGET_GROUP_NAME}" | wc -l)
+
+    if [ -z "${RULE_ARN}" ]; then
+        echo
+        echo "No more rules to delete for this listener!"
+        echo
+
+        return 0
+    else
+        echo
+        echo "Deleting listener rule for ${ELBV2_TARGET_GROUP_NAME} (Rule: ${RULE_ARN})"
+        echo
+        aws elbv2 delete-rule \
+            --profile "${ECS_CRED_PROFILE}" \
+            --region "${AWS_REGION}" \
+            --rule-arn "${RULE_ARN}"
+
+            delete_elbv2_path_rule "${ELBV2_HTTP_LISTENER_ARN}" "${ELBV2_TARGET_GROUP_NAME}"
+
+        return 2
+    fi
+}
+
+# Delete LB path rule
+delete_elbv2_path_rule "${ELBV2_TARGET_GROUP_NAME}"
+
+# And finally, delete the target group
+ELBV2_TARGET_GROUP_ARN=$(aws elbv2 describe-target-groups \
+    --region "${AWS_REGION}" \
+    --profile "${ECS_CRED_PROFILE}" \
+    --names "${ELBV2_TARGET_GROUP_NAME}" | grep TargetGroupArn | awk '{ print $2 }' | tr -d ',"')
+
+if [ ! -z "${ELBV2_TARGET_GROUP_ARN}" ] && [ "${COUNT_RULE_ARN}" = 0 ]; then
+
+    echo
+    echo "Deleting target group"
+    echo
+
+    aws elbv2 delete-target-group \
+        --region "${AWS_REGION}" \
+        --profile "${ECS_CRED_PROFILE}" \
+        --target-group-arn "${ELBV2_TARGET_GROUP_ARN}"
+fi

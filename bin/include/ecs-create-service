@@ -1,0 +1,22 @@
+#!/bin/bash
+
+. "${BASH_SOURCE%/*}"/bootstrap.sh
+
+ECS_SERVICE_NAME="${1}"
+ECS_TASK_DEFINITION_FAMILY_NAME="${2}"
+ELBV2_TARGET_GROUP_ARN="${3}"
+
+# passed in from elbv2-create-target-group (otherwise, pass it in as arg 3)
+if [ -z "${ELBV2_TARGET_GROUP_ARN}" ]; then
+    ELBV2_TARGET_GROUP_ARN="${ARN_FROM_CREATING_TARGET_GROUP}"
+fi
+
+aws ecs create-service \
+    --cluster "${ECS_CLUSTER_NAME}" \
+    --service-name "${ECS_SERVICE_NAME}" \
+    --task-definition "${ECS_TASK_DEFINITION_FAMILY_NAME}" \
+    --desired-count 1 \
+    --role "ecsServiceRole" \
+    --region "${AWS_REGION}" \
+    --profile "${ECS_CRED_PROFILE}" \
+    --load-balancers "targetGroupArn=${ELBV2_TARGET_GROUP_ARN},containerName=${WEB_CONTAINER_NAME},containerPort=80"

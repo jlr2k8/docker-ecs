@@ -1,0 +1,21 @@
+#!/bin/bash
+
+. "${BASH_SOURCE%/*}"/bootstrap.sh
+
+ECS_SERVICE_NAME="${1}"
+
+# mmm k... guess we have to make updates to the service before deleting it? really?
+aws ecs update-service \
+    --cluster "${ECS_CLUSTER_NAME}" \
+    --service "${ECS_SERVICE_NAME}" \
+    --desired-count 0 \
+    --region "${AWS_REGION}" \
+    --profile "${ECS_CRED_PROFILE}"
+
+if [ $? = 0 ]; then
+    aws ecs delete-service --cluster ${ECS_CLUSTER_NAME} --service "${ECS_SERVICE_NAME}" --region "${AWS_REGION}" --profile "${ECS_CRED_PROFILE}"
+else
+    echo
+    echo "The service was not updated, therefore not deleted. Does it even exist?"
+    echo
+fi

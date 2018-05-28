@@ -1,0 +1,31 @@
+#!/bin/bash
+THIS_DIRECTORY="${BASH_SOURCE%/*}"
+
+if [ -z "${THIS_DIRECTORY}" ]; then
+    echo
+    echo "Could not set THIS_DIRECTORY... exiting..."
+    echo
+    exit 1
+fi
+
+. ${THIS_DIRECTORY}/include/bootstrap.sh
+
+PROJECT_NAME="${1}"
+
+if [ -z "${PROJECT_NAME}" ]; then
+    echo
+    echo "No project specified... exiting..."
+    echo
+    exit 1
+fi
+
+WEB_CONTAINER_NAME="${PROJECT_NAME}-web"
+DB_CONTAINER_NAME="${PROJECT_NAME}-mysql"
+ECS_TASK_DEFINITION_NAME="${PROJECT_NAME}-task"
+ECS_TASK_DEFINITION_FAMILY_NAME="${PROJECT_NAME}-family"
+ECS_SERVICE_NAME="${PROJECT_NAME}-service"
+ELBV2_TARGET_GROUP_NAME="${PROJECT_NAME}-target-group"
+
+. ${THIS_DIRECTORY}/include/ecs-register-task-definition "${ECS_TASK_DEFINITION_NAME}" "${ECS_TASK_DEFINITION_FAMILY_NAME}"
+. ${THIS_DIRECTORY}/include/elbv2-app-lb-config "${ELBV2_TARGET_GROUP_NAME}"
+. ${THIS_DIRECTORY}/include/ecs-create-service "${ECS_SERVICE_NAME}" "${ECS_TASK_DEFINITION_FAMILY_NAME}" "${ELBV2_TARGET_GROUP_ARN}"

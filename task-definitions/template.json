@@ -1,0 +1,51 @@
+{
+  "containerDefinitions": [
+    {
+      "portMappings": [
+        {
+          "hostPort": 0,
+          "protocol": "tcp",
+          "containerPort": 80
+        }
+      ],
+      "mountPoints": [],
+      "memory": 512,
+      "volumesFrom": [],
+      "image": "php:7.1-apache-stretch",
+      "name": "{{WEB_CONTAINER_NAME}}"
+    },
+    {
+      "portMappings": [
+        {
+          "hostPort": 0,
+          "protocol": "tcp",
+          "containerPort": 80
+        }
+      ],
+      "mountPoints": [
+        {
+          "sourceVolume": "mysql",
+          "containerPath": "/var/lib/mysql"
+        }
+      ],
+      "memory": 512,
+      "volumesFrom": [],
+      "image": "mysql:5.7.22",
+      "name": "{{DB_CONTAINER_NAME}}",
+      "environment": [
+        {
+          "name": "MYSQL_RANDOM_ROOT_PASSWORD",
+          "value": "yes"
+        }
+      ]
+    }
+  ],
+  "volumes": [
+    {
+      "name": "mysql",
+      "host": {
+        "sourcePath": "/var/lib/mysql"
+      }
+    }
+  ]
+}

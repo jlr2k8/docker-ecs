@@ -1,0 +1,46 @@
+#!/bin/bash
+
+. "${BASH_SOURCE%/*}"/bootstrap.sh
+
+ECS_TASK_DEFINITION_NAME="${1}"
+ECS_TASK_DEFINITION_FAMILY_NAME="${2}"
+ECS_TASK_DEFINITION_TEMPLATE_JSON="${BASH_SOURCE%/*}/../../task-definitions/template.json"
+ECS_TASK_DEFINITION_PROJECT_JSON="${BASH_SOURCE%/*}/../../task-definitions/${ECS_TASK_DEFINITION_NAME}.json"
+
+GENERATE_NEW=false
+
+if [ ! -e "${ECS_TASK_DEFINITION_PROJECT_JSON}" ]; then
+    echo
+    echo "Task definition JSON does not yet exist..."
+    GENERATE_NEW=true
+
+elif [[ "${ECS_TASK_DEFINITION_TEMPLATE_JSON}" -nt "${ECS_TASK_DEFINITION_PROJECT_JSON}" ]]; then
+    echo
+    echo "Template for the ECS task definition has been updated locally!"
+    GENERATE_NEW=true
+fi
+
+if [ "${GENERATE_NEW}" = true ]; then
+    echo "Generating a task definition for ${PROJECT_NAME}..."
+    echo
+
+    cp "${ECS_TASK_DEFINITION_TEMPLATE_JSON}" "${ECS_TASK_DEFINITION_PROJECT_JSON}"
+
+    sed -i "s|{{WEB_CONTAINER_NAME}}|${WEB_CONTAINER_NAME}|g" "${ECS_TASK_DEFINITION_PROJECT_JSON}"
+    sed -i "s|{{DB_CONTAINER_NAME}}|${DB_CONTAINER_NAME}|g" "${ECS_TASK_DEFINITION_PROJECT_JSON}"
+fi
+
+aws ecs describe-task-definition \
+    --task-definition "${ECS_TASK_DEFINITION_NAME}" \
+    --region "${AWS_REGION}" \
+    --profile "${ECS_CRED_PROFILE}"
+
+if [ $? != 0 ]; then
+    echo
+    echo "Registering task definition..."
+    aws ecs register-task-definition \
+        --region "${AWS_REGION}" \
+        --profile "${ECS_CRED_PROFILE}" \
+        --cli-input-json "file://${ECS_TASK_DEFINITION_PROJECT_JSON}" \
+        --family "${ECS_TASK_DEFINITION_FAMILY_NAME}"
+fi
