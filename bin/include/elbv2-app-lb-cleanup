@@ -33,11 +33,6 @@ function delete_elbv2_path_rule {
         --region "${AWS_REGION}" \
         --listener-arn "${ELBV2_HTTP_LISTENER_ARN}" | grep "${ELBV2_TARGET_GROUP_NAME}" -B 4 | head -1 | awk '{ print $2 }' | tr -d ',"')
 
-    COUNT_RULE_ARN=$(aws elbv2 describe-rules \
-        --profile "${ECS_CRED_PROFILE}" \
-        --region "${AWS_REGION}" \
-        --listener-arn "${ELBV2_HTTP_LISTENER_ARN}" | grep "${ELBV2_TARGET_GROUP_NAME}" | wc -l)
-
     if [ -z "${RULE_ARN}" ]; then
         echo
         echo "No more rules to delete for this listener!"
@@ -68,7 +63,7 @@ ELBV2_TARGET_GROUP_ARN=$(aws elbv2 describe-target-groups \
     --profile "${ECS_CRED_PROFILE}" \
     --names "${ELBV2_TARGET_GROUP_NAME}" | grep TargetGroupArn | awk '{ print $2 }' | tr -d ',"')
 
-if [ ! -z "${ELBV2_TARGET_GROUP_ARN}" ] && [ "${COUNT_RULE_ARN}" = 0 ]; then
+if [ ! -z "${ELBV2_TARGET_GROUP_ARN}" ] && [ -z "${RULE_ARN}" ]; then
 
     echo
     echo "Deleting target group"
